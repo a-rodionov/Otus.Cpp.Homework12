@@ -72,10 +72,10 @@ BOOST_AUTO_TEST_CASE(single_connection_multiple_receives)
   }
   ifs.close();
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(std::cbegin(ethalon),
-                                std::cend(ethalon),
-                                std::cbegin(result),
-                                std::cend(result));
+  BOOST_REQUIRE_EQUAL_COLLECTIONS(std::cbegin(ethalon),
+                                  std::cend(ethalon),
+                                  std::cbegin(result),
+                                  std::cend(result));
 
   std::system("killall bulk_server");
   server_thread.join();
@@ -146,10 +146,10 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix)
   }
   ifs.close();
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(std::cbegin(ethalon),
-                                std::cend(ethalon),
-                                std::cbegin(result),
-                                std::cend(result));
+  BOOST_REQUIRE_EQUAL_COLLECTIONS(std::cbegin(ethalon),
+                                  std::cend(ethalon),
+                                  std::cbegin(result),
+                                  std::cend(result));
   
   std::system("killall bulk_server");
   server_thread.join();
@@ -221,10 +221,10 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_block)
   }
   ifs.close();
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(std::cbegin(ethalon),
-                                std::cend(ethalon),
-                                std::cbegin(result),
-                                std::cend(result));
+  BOOST_REQUIRE_EQUAL_COLLECTIONS(std::cbegin(ethalon),
+                                  std::cend(ethalon),
+                                  std::cbegin(result),
+                                  std::cend(result));
 
   std::system("killall bulk_server");
   server_thread.join();
@@ -295,10 +295,10 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_incomplete_block)
   }
   ifs.close();
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(std::cbegin(ethalon),
-                                std::cend(ethalon),
-                                std::cbegin(result),
-                                std::cend(result));
+  BOOST_REQUIRE_EQUAL_COLLECTIONS(std::cbegin(ethalon),
+                                  std::cend(ethalon),
+                                  std::cbegin(result),
+                                  std::cend(result));
   
   std::system("killall bulk_server");
   server_thread.join();
