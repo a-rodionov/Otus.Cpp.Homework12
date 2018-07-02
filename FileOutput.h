@@ -29,7 +29,8 @@ class FileOutput : public IOutput, public ThreadPool
 {
 public:
 
-  explicit FileOutput(size_t threads_count = 1)
+  explicit FileOutput(size_t threads_count = 1, bool isSaveFilenames = false)
+    : isSaveFilenames{isSaveFilenames}
   {
     for(decltype(threads_count) i{0}; i < threads_count; ++i) {
       AddWorker();
@@ -74,12 +75,16 @@ public:
       ++statistics->second.blocks;
       statistics->second.commands += data->size();
 
-      std::lock_guard<std::shared_timed_mutex> lock_filenames(filenames_mutex);
-      processed_filenames.push_back(MakeFilename(timestamp, unique_counter));
+      if(isSaveFilenames) {
+        std::lock_guard<std::shared_timed_mutex> lock_filenames(filenames_mutex);
+        processed_filenames.push_back(MakeFilename(timestamp, unique_counter));
+      }
     });
   }
 
   auto GetProcessedFilenames() const {
+    if(!isSaveFilenames)
+      throw std::logic_error("FileOutput object was constructed without isSaveFilenames flag.");
     std::shared_lock<std::shared_timed_mutex> lock_filenames(filenames_mutex);
     return processed_filenames;
   }
@@ -89,7 +94,8 @@ protected:
   std::map<std::thread::id, Statistics> threads_statistics;
   std::shared_timed_mutex statistics_mutex;
 
-  std::vector<std::string> processed_filenames;
   unsigned short counter{0};
+  bool isSaveFilenames;
+  std::vector<std::string> processed_filenames;
   mutable std::shared_timed_mutex filenames_mutex;
 };

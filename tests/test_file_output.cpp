@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE(simple_file_output)
 
   auto commandProcessor = std::make_unique<CommandProcessor>();
   auto storage = std::make_shared<Storage>(3);
-  auto fileOutput = std::make_shared<FileOutput>();
+  auto fileOutput = std::make_shared<FileOutput>(1, true);
 
   storage->Subscribe(fileOutput);
   commandProcessor->Subscribe(storage);

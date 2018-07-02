@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE(verify_statistics)
 
   auto commandProcessor = std::make_unique<CommandProcessor>();
   auto storage = std::make_shared<Storage>(3);
-  auto fileOutput = std::make_shared<FileOutput>(2);
+  auto fileOutput = std::make_shared<FileOutput>(2, true);
 
   storage->Subscribe(fileOutput);
   commandProcessor->Subscribe(storage);
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(verify_unique_filenames)
 
   auto commandProcessor = std::make_unique<CommandProcessor>();
   auto storage = std::make_shared<Storage>(3);
-  auto fileOutput = std::make_shared<FileOutput>(3);
+  auto fileOutput = std::make_shared<FileOutput>(3, true);
 
   storage->Subscribe(fileOutput);
   commandProcessor->Subscribe(storage);
