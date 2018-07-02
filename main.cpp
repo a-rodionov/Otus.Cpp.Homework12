@@ -10,10 +10,12 @@ int main(int argc, char const* argv[])
 {
   try
   {
-    unsigned long long port_num, block_size;
+    unsigned long long port_num, block_size, max_cmds_in_files;
     try
     {
-      if(3 != argc) {
+      if((3 > argc)
+        || (4 < argc))
+       {
         throw std::invalid_argument("");
       }
 
@@ -39,15 +41,29 @@ int main(int argc, char const* argv[])
       if(0 == block_size) {
         throw std::invalid_argument("");
       }
+
+      if(4 == argc) {
+        digit_str = argv[3];
+        if(!std::all_of(std::cbegin(digit_str),
+                        std::cend(digit_str),
+                        [](unsigned char symbol) { return std::isdigit(symbol); } )) {
+          throw std::invalid_argument("");
+        }
+        max_cmds_in_files = std::stoull(digit_str);
+      }
+      else
+        max_cmds_in_files = 0;
     }
     catch(...)
     {
-      std::string error_msg = "The programm must be started with 2 parameters. First parameter is port number, "
+      std::string error_msg = "The programm must be started with 2 or 3 parameters. First parameter is port number, "
                               "which value must be in range 0 - "
                               + std::to_string(std::numeric_limits<unsigned short>::max())
                               + ". Second parameter is block size, which value must be in range 1 - "
                               + std::to_string(std::numeric_limits<decltype(block_size)>::max())
-                              + ".";
+                              + ". Third parameter is optional. It's the number of processed commands after which "
+                              "an exception will be thrown in the thread that writes commands to files. If value is "
+                              "0, it'll be ignored.";
       throw std::invalid_argument(error_msg);
     }
 
@@ -55,7 +71,7 @@ int main(int argc, char const* argv[])
 
     boost::asio::io_service io_service;
     tcp::endpoint endpoint(tcp::v4(), port_num);
-    bulk_server server{io_service, endpoint, block_size};
+    bulk_server server{io_service, endpoint, block_size, max_cmds_in_files};
     io_service.run();
   }
   catch (const std::exception& e)

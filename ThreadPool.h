@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <boost/asio.hpp>
 #include <boost/log/trivial.hpp>
+#include "Logger.h"
 
 class ThreadPool {
 
@@ -156,6 +157,7 @@ private:
     catch (std::exception& exc) {
       try {
         BOOST_LOG_TRIVIAL(error) << exc.what();
+        Logger::Instance().Flush();
       }
       catch (std::exception&) {
         is_error_log_working = false;

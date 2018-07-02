@@ -2,6 +2,10 @@
 #include <thread>
 #include <chrono>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
+//#include <regex>
+#include "FileOutput.h"
 
 #define BOOST_TEST_IGNORE_NON_ZERO_CHILD_CODE
 #define BOOST_TEST_MODULE test_async
@@ -22,7 +26,7 @@ std::string GetCurrentWorkingDir( void ) {
   if(bytes >= 0)
       buff[bytes] = '\0';
   std::string current_working_dir(buff);
-  return current_working_dir.substr(0, current_working_dir.find_last_of('/'));
+  return current_working_dir.substr(0, current_working_dir.find_last_of('/')+1);
 }
 
 void StartServer(const std::string& cmd, std::atomic_bool& isThreadStarted) {
@@ -47,7 +51,7 @@ BOOST_AUTO_TEST_CASE(single_connection_multiple_receives)
   result.reserve(ethalon.size());
 
   auto cmd = GetCurrentWorkingDir();
-  cmd += "/bulk_server 9000 3 > console.output";
+  cmd += "bulk_server 9000 3 > console.output";
   std::thread server_thread(StartServer, cmd, std::ref(isThreadStarted));
   while(!isThreadStarted) {}
   std::this_thread::sleep_for(200ms);
@@ -65,6 +69,9 @@ BOOST_AUTO_TEST_CASE(single_connection_multiple_receives)
   sock.close();
   std::this_thread::sleep_for(200ms);
 
+  std::system("killall bulk_server");
+  server_thread.join();
+
   std::ifstream ifs{"console.output", std::ifstream::in};
   BOOST_REQUIRE_EQUAL(true, ifs.is_open());
   for(std::string line; getline(ifs, line);) {
@@ -76,9 +83,6 @@ BOOST_AUTO_TEST_CASE(single_connection_multiple_receives)
                                   std::cend(ethalon),
                                   std::cbegin(result),
                                   std::cend(result));
-
-  std::system("killall bulk_server");
-  server_thread.join();
   std::system("rm -f *.log");
   std::system("rm -f console.output");
 }
@@ -100,7 +104,7 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix)
   result.reserve(ethalon.size());
 
   auto cmd = GetCurrentWorkingDir();
-  cmd += "/bulk_server 9000 3 > console.output";
+  cmd += "bulk_server 9000 3 > console.output";
   std::thread server_thread(StartServer, cmd, std::ref(isThreadStarted));
   while(!isThreadStarted) {}
   std::this_thread::sleep_for(200ms);
@@ -139,6 +143,9 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix)
   sock_3.close();
   std::this_thread::sleep_for(200ms);
 
+  std::system("killall bulk_server");
+  server_thread.join();
+
   std::ifstream ifs{"console.output", std::ifstream::in};
   BOOST_REQUIRE_EQUAL(true, ifs.is_open());
   for(std::string line; getline(ifs, line);) {
@@ -150,9 +157,6 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix)
                                   std::cend(ethalon),
                                   std::cbegin(result),
                                   std::cend(result));
-  
-  std::system("killall bulk_server");
-  server_thread.join();
   std::system("rm -f *.log");
   std::system("rm -f console.output");
 }
@@ -175,7 +179,7 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_block)
   result.reserve(ethalon.size());
 
   auto cmd = GetCurrentWorkingDir();
-  cmd += "/bulk_server 9000 3 > console.output";
+  cmd += "bulk_server 9000 3 > console.output";
   std::thread server_thread(StartServer, cmd, std::ref(isThreadStarted));
   while(!isThreadStarted) {}
   std::this_thread::sleep_for(200ms);
@@ -214,6 +218,9 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_block)
   sock_3.close();
   std::this_thread::sleep_for(200ms);
 
+  std::system("killall bulk_server");
+  server_thread.join();
+
   std::ifstream ifs{"console.output", std::ifstream::in};
   BOOST_REQUIRE_EQUAL(true, ifs.is_open());
   for(std::string line; getline(ifs, line);) {
@@ -225,9 +232,6 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_block)
                                   std::cend(ethalon),
                                   std::cbegin(result),
                                   std::cend(result));
-
-  std::system("killall bulk_server");
-  server_thread.join();
   std::system("rm -f *.log");
   std::system("rm -f console.output");
 }
@@ -249,7 +253,7 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_incomplete_block)
   result.reserve(ethalon.size());
 
   auto cmd = GetCurrentWorkingDir();
-  cmd += "/bulk_server 9000 3 > console.output";
+  cmd += "bulk_server 9000 3 > console.output";
   std::thread server_thread(StartServer, cmd, std::ref(isThreadStarted));
   while(!isThreadStarted) {}
   std::this_thread::sleep_for(200ms);
@@ -288,6 +292,9 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_incomplete_block)
   sock_3.close();
   std::this_thread::sleep_for(200ms);
 
+  std::system("killall bulk_server");
+  server_thread.join();
+
   std::ifstream ifs{"console.output", std::ifstream::in};
   BOOST_REQUIRE_EQUAL(true, ifs.is_open());
   for(std::string line; getline(ifs, line);) {
@@ -299,11 +306,75 @@ BOOST_AUTO_TEST_CASE(multiple_connections_cmd_mix_with_incomplete_block)
                                   std::cend(ethalon),
                                   std::cbegin(result),
                                   std::cend(result));
-  
-  std::system("killall bulk_server");
-  server_thread.join();
   std::system("rm -f *.log");
   std::system("rm -f console.output");
+}
+
+BOOST_AUTO_TEST_CASE(error_log)
+{
+  std::atomic_bool isThreadStarted{false};
+  std::vector<std::string> test_data {
+    {"cmd1\n"}, {"cmd2\n"}, {"cmd3\n"}, {"cmd4\n"},
+    {"cmd5\n"}, {"cmd6\n"}, {"cmd7\n"}, {"cmd8\n"},
+    {"cmd9\n"}, {"cmd10\n"}
+  };
+  bool isErrorMsgWritten{false};
+
+  std::system("rm -f bulkmt_error_*.log");
+
+  auto cmd = GetCurrentWorkingDir();
+  cmd += "bulk_server 9000 2 4 > console.output";
+  std::thread server_thread(StartServer, cmd, std::ref(isThreadStarted));
+  while(!isThreadStarted) {}
+  std::this_thread::sleep_for(200ms);
+
+  boost::asio::io_service io_service;
+  ip::tcp::endpoint ep( ip::address::from_string("127.0.0.1"), 9000);
+  ip::tcp::socket sock(io_service);
+  sock.connect(ep);
+
+  std::for_each(std::cbegin(test_data),
+                std::cend(test_data),
+                [&sock](const auto& element) {
+                  sock.write_some(buffer(element));
+                });
+  sock.close();
+  std::this_thread::sleep_for(200ms);
+
+  std::system("killall bulk_server");
+  server_thread.join();
+  std::system("rm -f console.output");
+
+  boost::filesystem::path abs_path = boost::filesystem::complete("");
+  const boost::regex error_log_filter( "bulkmt_error_.*\.log" );
+  std::vector<std::string> error_log_files;
+
+  boost::filesystem::directory_iterator end_itr;
+  for( boost::filesystem::directory_iterator dirItr(abs_path.string()); dirItr != end_itr; ++dirItr )
+  {
+      if(!boost::filesystem::is_regular_file(dirItr->status())) {
+        continue;
+      }
+      boost::smatch what;
+      if(!boost::regex_match(dirItr->path().filename().string(), what, error_log_filter)) {
+        continue;
+      }
+      error_log_files.push_back(dirItr->path().filename().string());
+  }
+  BOOST_REQUIRE_EQUAL(1, error_log_files.size());
+
+  std::ifstream ifs{error_log_files[0], std::ifstream::in};
+  BOOST_REQUIRE_EQUAL(true, ifs.is_open());
+  for(std::string line; getline(ifs, line);) {
+    if(ERROR_MAX_COUNT_OF_CMDS_REACHED == line) {
+      isErrorMsgWritten = true;
+      break;
+    }
+  }
+  ifs.close();
+
+  BOOST_REQUIRE_EQUAL(true, isErrorMsgWritten);
+  std::system("rm -f *.log");
 }
 
 BOOST_AUTO_TEST_CASE(remove_test_files)

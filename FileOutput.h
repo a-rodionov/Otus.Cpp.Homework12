@@ -7,6 +7,8 @@
 #include "ThreadPool.h"
 #include "Statistics.h"
 
+const std::string ERROR_MAX_COUNT_OF_CMDS_REACHED{"Maximum number of commands that were written to files is reached."};
+
 std::string MakeFilename(std::size_t timestamp, unsigned short counter) {
   std::stringstream filename;
   filename << "bulk" << std::to_string(timestamp) << "_" << counter << ".log";
@@ -29,8 +31,10 @@ class FileOutput : public IOutput, public ThreadPool
 {
 public:
 
-  explicit FileOutput(size_t threads_count = 1, bool isSaveFilenames = false)
-    : isSaveFilenames{isSaveFilenames}
+  explicit FileOutput(size_t threads_count = 1,
+                      bool isSaveFilenames = false,
+                      unsigned long long max_cmds_in_files = 0)
+    : isSaveFilenames{isSaveFilenames}, max_cmds_in_files{max_cmds_in_files}
   {
     for(decltype(threads_count) i{0}; i < threads_count; ++i) {
       AddWorker();
@@ -64,14 +68,23 @@ public:
   void Output(const std::size_t timestamp, std::shared_ptr<const std::list<std::string>>& data) override {
     auto unique_counter = counter++;
     AddTask([this, timestamp, data, unique_counter]() {
-      WriteBulkToFile(timestamp, *data, unique_counter);
 
       std::shared_lock<std::shared_timed_mutex> lock_statistics(statistics_mutex);
       auto statistics = threads_statistics.find(std::this_thread::get_id());
-      if(std::cend(threads_statistics) == statistics)
+      if(std::cend(threads_statistics) == statistics) {
         throw std::runtime_error("FileOutput::Output. Statistics for this thread doesn't exist.");
+      }
       lock_statistics.unlock();
       // Каждый поток модифицирует только свою статистику, поэтому безопасно ее модифицировать без блокировки.
+
+      if(max_cmds_in_files) {
+        if(max_cmds_in_files <= statistics->second.commands) {
+          throw std::runtime_error(ERROR_MAX_COUNT_OF_CMDS_REACHED.c_str());
+        }
+      }
+
+      WriteBulkToFile(timestamp, *data, unique_counter);
+
       ++statistics->second.blocks;
       statistics->second.commands += data->size();
 
@@ -83,8 +96,9 @@ public:
   }
 
   auto GetProcessedFilenames() const {
-    if(!isSaveFilenames)
+    if(!isSaveFilenames) {
       throw std::logic_error("FileOutput object was constructed without isSaveFilenames flag.");
+    }
     std::shared_lock<std::shared_timed_mutex> lock_filenames(filenames_mutex);
     return processed_filenames;
   }
@@ -98,4 +112,6 @@ protected:
   bool isSaveFilenames;
   std::vector<std::string> processed_filenames;
   mutable std::shared_timed_mutex filenames_mutex;
+
+  const unsigned long long max_cmds_in_files;
 };
