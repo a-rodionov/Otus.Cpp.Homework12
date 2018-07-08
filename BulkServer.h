@@ -77,11 +77,12 @@ private:
 class bulk_server
 {
 public:
-  bulk_server(boost::asio::io_service& io_service,
-      const tcp::endpoint& endpoint,
+  bulk_server(unsigned long long port_num,
       unsigned long long block_size,
       unsigned long long max_cmds_in_files)
-    : acceptor(io_service, endpoint),
+    : io_service(),
+      endpoint(tcp::v4(), port_num),
+      acceptor(io_service, endpoint),
       socket(io_service),
       sessions(std::make_shared<std::set<std::shared_ptr<bulk_session>>>()),
       cmdStorage(std::make_shared<Storage>(block_size)),
@@ -90,7 +91,13 @@ public:
   {
     cmdStorage->Subscribe(consoleOutput);
     cmdStorage->Subscribe(fileOutput);
+
+    //boost::asio::io_service io_service;
     do_accept();
+  }
+
+  void start() {
+    io_service.run();
   }
 
 private:
@@ -110,6 +117,8 @@ private:
       });
   }
 
+  boost::asio::io_service io_service;
+  tcp::endpoint endpoint;
   tcp::acceptor acceptor;
   tcp::socket socket;
   session_set sessions;

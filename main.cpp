@@ -69,10 +69,8 @@ int main(int argc, char const* argv[])
 
     Logger::Instance();
 
-    boost::asio::io_service io_service;
-    tcp::endpoint endpoint(tcp::v4(), port_num);
-    bulk_server server{io_service, endpoint, block_size, max_cmds_in_files};
-    io_service.run();
+    bulk_server server{port_num, block_size, max_cmds_in_files};
+    server.start();
   }
   catch (const std::exception& e)
   {
