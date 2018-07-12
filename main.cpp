@@ -69,8 +69,8 @@ int main(int argc, char const* argv[])
 
     Logger::Instance();
 
-    bulk_server server{port_num, block_size, max_cmds_in_files};
-    server.start();
+    auto server = bulk_server::make(static_cast<unsigned short>(port_num), block_size, max_cmds_in_files);
+    server->start();
   }
   catch (const std::exception& e)
   {
